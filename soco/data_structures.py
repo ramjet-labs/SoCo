@@ -793,6 +793,7 @@ class DidlPerson(DidlContainer):
     """A content directory class representing a person."""
 
     item_class = 'object.container.person'
+    tag = 'item'
     _translation = DidlContainer._translation.copy()
     _translation.update(
         {
@@ -840,6 +841,7 @@ class DidlPlaylistContainer(DidlContainer):
 
     item_class = 'object.container.playlistContainer'
     # name: (ns, tag)
+    tag = 'item'
     _translation = DidlContainer._translation.copy()
     _translation.update(
         {
@@ -889,6 +891,7 @@ class DidlMusicGenre(DidlGenre):
     """Class that represents a music genre."""
 
     item_class = 'object.container.genre.musicGenre'
+    tag = 'item'
 
 
 ###############################################################################

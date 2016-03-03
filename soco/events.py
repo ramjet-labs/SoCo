@@ -112,6 +112,8 @@ def parse_event_xml(xml_event):
                 if instance is None:
                     instance = last_change_tree.find(
                         "{urn:schemas-upnp-org:metadata-1-0/RCS/}InstanceID")
+                if instance is None:
+                    instance = last_change_tree.find("{urn:schemas-sonos-com:metadata-1-0/Queue/}QueueID")
                 # Look at each variable within the LastChange event
                 for last_change_var in instance:
                     tag = last_change_var.tag
