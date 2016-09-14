@@ -356,10 +356,11 @@ class DidlObject(DidlMetaClass(str('DidlMetaClass'), (object,), {})):
         # Check we have the right sort of element. tag can be an empty string
         # which indicates that any tag is allowed (see eg the musicAlbum DIDL
         # class)
-        if not element.tag.endswith(cls.tag):
+        if not (element.tag.endswith("item") or element.tag.endswith("container")):
             raise DIDLMetadataError(
-                "Wrong element. Expected '<{0}>',"
-                " got '<{1}>'".format(cls.tag, element.tag))
+                "Wrong element. Expected <item> or <container>,"
+                " got <{0}> for class {1}'".format(
+                    tag, cls.item_class))
         # and that the upnp matches what we are expecting
         item_class = element.find(ns_tag('upnp', 'class')).text
         if item_class != cls.item_class:
