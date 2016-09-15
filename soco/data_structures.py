@@ -855,6 +855,7 @@ class DidlPlaylistContainer(DidlContainer):
             'date': ('dc', 'date'),
             'language': ('dc', 'language'),
             'rights': ('dc', 'rights'),
+            'album_art_uri': ('upnp', 'albumArtURI'),
         }
     )
 
