@@ -387,7 +387,10 @@ class DidlObject(DidlMetaClass(str('DidlMetaClass'), (object,), {})):
         if title_elt is None:
             raise DIDLMetadataError(
                 "Missing title element")
-        title = really_unicode(title_elt.text)
+        title = ""
+        # Assets will not have title elements
+        if title_elt.text is not None:
+            title = really_unicode(title_elt.text)
 
         # Deal with any resource elements
         resources = []
