@@ -23,7 +23,7 @@ from soco import config
 from .compat import (SimpleHTTPRequestHandler, urlopen, URLError, socketserver,
                      Queue,)
 from .xml import XML
-from .exceptions import SoCoException
+from .exceptions import SoCoException, DIDLMetadataError
 from .utils import camel_to_underscore
 from .data_structures import from_didl_string
 
@@ -135,7 +135,11 @@ def parse_event_xml(xml_event):
                     # If DIDL metadata is returned, convert it to a music
                     # library data structure
                     if value.startswith('<DIDL-Lite'):
-                        value = from_didl_string(value)[0]
+                        # If sonos adds a field that we haven't registered don't hose us
+                        try:
+                            value = from_didl_string(value)[0]
+                        except DIDLMetadataError:
+                            pass
                     channel = last_change_var.get('channel')
                     if channel is not None:
                         if result.get(tag) is None:
