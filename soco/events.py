@@ -552,11 +552,19 @@ class Subscription(object):
         headers = {
             'SID': self.sid
         }
-        response = requests.request(
-            'UNSUBSCRIBE',
-            self.service.base_url + self.service.event_subscription_url,
-            headers=headers)
-        response.raise_for_status()
+        try:
+            response = requests.request(
+                'UNSUBSCRIBE',
+                self.service.base_url + self.service.event_subscription_url,
+                headers=headers,
+                # We're only giving Sonos 100ms to respond. Testing indicates that this will
+                # either return in this window or never come back
+                timeout=1,
+            )
+            response.raise_for_status()
+        except requests.exceptions.ConnectTimeout:
+            pass # If sonos isn't responding let's not hold up our shutdown
+
         self.is_subscribed = False
         self._timestamp = None
         log.info(
