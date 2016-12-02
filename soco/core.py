@@ -1569,7 +1569,7 @@ class SoCo(_SocoSingletonBase):
         return response, metadata
 
     @only_on_master
-    def add_uri_to_queue(self, uri):
+    def add_uri_to_queue(self, uri, meta=None):
         """Adds the URI to the queue
 
         :param uri: The URI to be added to the queue
@@ -1579,12 +1579,12 @@ class SoCo(_SocoSingletonBase):
         # etc of the uri. But this seems OK.
         res = [DidlResource(uri=uri, protocol_info="x-rincon-playlist:*:*:*")]
         item = DidlObject(resources=res, title='', parent_id='', item_id='')
-        return self.add_to_queue(item)
+        return self.add_to_queue(item, metadata=meta)
 
     @only_on_master
-    def add_to_queue(self, queueable_item):
+    def add_to_queue(self, queueable_item, metadata=None):
         """ Adds a queueable item to the queue """
-        metadata = to_didl_string(queueable_item)
+        metadata = to_didl_string(queueable_item) if not metadata else metadata;
         response = self.avTransport.AddURIToQueue([
             ('InstanceID', 0),
             ('EnqueuedURI', queueable_item.resources[0].uri),
