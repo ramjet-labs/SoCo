@@ -51,8 +51,8 @@ from .events import Subscription
 from .xml import XML
 
 log = logging.getLogger(__name__)  # pylint: disable=C0103
-# logging.basicConfig()
-# log.setLevel(logging.INFO)
+
+performance_logger = logging.getLogger("sonos")
 
 Action = namedtuple('Action', 'name, in_args, out_args')
 Argument = namedtuple('Argument', 'name, vartype')
@@ -329,6 +329,7 @@ class Service(object):
         headers, body = self.build_command(action, args)
         log.info("Sending %s %s to %s", action, args, self.soco.ip_address)
         log.debug("Sending %s, %s", headers, prettify(body))
+        performance_logger.info("soco:send_command:Sending request to sonos %s %s" % (action, args))
         # Convert the body to bytes, and send it.
         response = requests.post(
             self.base_url + self.control_url,
@@ -336,6 +337,7 @@ class Service(object):
             data=body.encode('utf-8')
         )
         log.debug("Received %s, %s", response.headers, response.text)
+        performance_logger.info("soco:send_command:Got response from sonos %s %s" % (action, args))
         status = response.status_code
         log.info(
             "Received status %s from %s", status, self.soco.ip_address)

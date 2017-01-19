@@ -30,6 +30,8 @@ from .data_structures import from_didl_string
 
 log = logging.getLogger(__name__)  # pylint: disable=C0103
 
+performance_logger = logging.getLogger("sonos")
+
 
 def parse_event_xml(xml_event):
     """ Parse the body of a UPnP event
@@ -226,6 +228,7 @@ class EventNotifyHandler(SimpleHTTPRequestHandler):
         sid = headers['sid']  # Event Subscription Identifier
         content_length = int(headers['content-length'])
         content = self.rfile.read(content_length)
+        performance_logger.info("soco:do_NOTIFY:Received event %s" % content)
         # find the relevant service from the sid
         with _sid_to_service_lock:
             service = _sid_to_service.get(sid)
@@ -243,6 +246,7 @@ class EventNotifyHandler(SimpleHTTPRequestHandler):
         # Find the right queue, and put the event on it
         with _sid_to_event_queue_lock:
             try:
+                performance_logger.info("soco:do_NOTIFY:Sending event to queue")
                 _sid_to_event_queue[sid].put(event)
             except KeyError:  # The key have been deleted in another thread
                 pass
