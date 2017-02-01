@@ -7,10 +7,12 @@ the main entry to the SoCo functionality
 from __future__ import unicode_literals
 
 import socket
+import json
 import logging
 import re
 import requests
 from functools import wraps
+import time
 
 from .services import DeviceProperties, ContentDirectory
 from .services import RenderingControl, AVTransport, ZoneGroupTopology
@@ -397,23 +399,28 @@ class SoCo(_SocoSingletonBase):
 
         # first, set the queue itself as the source URI
         uri = 'x-rincon-queue:{0}#0'.format(self.uid)
-        performance_logger.info("soco:play_from_queue:Setting av transport uri")
+        start_timestamp = time.time()
         self.avTransport.SetAVTransportURI([
             ('InstanceID', 0),
             ('CurrentURI', uri),
             ('CurrentURIMetaData', '')
         ])
-        performance_logger.info("soco:play_from_queue:Av Transport uri set")
+        uri_set_time = time.time()
+        log_args = dict(action="SetAVTransportUri", duration=(uri_set_time-start_timestamp)*1000, uri=uri)
+        performance_logger.info("soco:play_from_queue:%s" % json.dumps(log_args))
 
-        performance_logger.info("soco:play_from_queue:Seeking to track %s" % index)
         # second, set the track number with a seek command
         self.avTransport.Seek([
             ('InstanceID', 0),
             ('Unit', 'TRACK_NR'),
             ('Target', index + 1)
         ])
-        performance_logger.info("soco:play_from_queue:Sonos has sought to track: %s" % index)
+        log_args = dict(action="Seek", duration=(time.time()-uri_set_time)*1000, track=index+1)
+        performance_logger.info("soco:play_from_queue:%s" % json.dumps(log_args))
 
+        log_args = dict(action="All", duration=(time.time()-start_timestamp)*1000, track=index+1, uri=uri)
+        performance_logger.info("soco:play_from_queue:%s" % json.dumps(log_args))
+        
         # finally, just play what's set if needed
         if start:
             return self.play()
@@ -429,12 +436,13 @@ class SoCo(_SocoSingletonBase):
         Raises SoCoException (or a subclass) upon errors.
 
         """
-        performance_logger.info("soco:play:Calling play on the sonos")
+        start_timestamp = time.time()
         self.avTransport.Play([
             ('InstanceID', 0),
             ('Speed', 1)
         ])
-        performance_logger.info("soco:play:Sonos is playing")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:play:%s" % json.dumps(log_args))
 
     @only_on_master
     def play_uri(self, uri='', meta='', title='', start=True):
@@ -458,6 +466,7 @@ class SoCo(_SocoSingletonBase):
         Raises SoCoException (or a subclass) upon errors.
 
         """
+        start_timestamp = time.time()
         if meta == '' and title != '':
             meta_template = '<DIDL-Lite xmlns:dc="http://purl.org/dc/elements'\
                 '/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" '\
@@ -472,13 +481,13 @@ class SoCo(_SocoSingletonBase):
             # Radio stations need to have at least a title to play
             meta = meta_template.format(title=title, service=tunein_service)
 
-        performance_logger.info("soco:play_uri:Calling set av transport uri %s" % uri)
         self.avTransport.SetAVTransportURI([
             ('InstanceID', 0),
             ('CurrentURI', uri),
             ('CurrentURIMetaData', meta)
         ])
-        performance_logger.info("soco:play_uri:Play uri has been set")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000, uri=uri)
+        performance_logger.info("soco:play_uri:%s" % json.dumps(log_args))
         # The track is enqueued, now play it if needed
         if start:
             return self.play()
@@ -494,12 +503,13 @@ class SoCo(_SocoSingletonBase):
         Raises SoCoException (or a subclass) upon errors.
 
         """
-        performance_logger.info("soco:pause:Pausing the sonos")
+        start_timestamp = time.time()
         self.avTransport.Pause([
             ('InstanceID', 0),
             ('Speed', 1)
         ])
-        performance_logger.info("soco:pause:Sonos has been paused")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:pause:%s" % json.dumps(log_args))
 
     @only_on_master
     def stop(self):
@@ -552,12 +562,13 @@ class SoCo(_SocoSingletonBase):
         songs can be skipped).
 
         """
-        performance_logger.info("soco:next:Calling next")
+        start_timestamp = time.time()
         self.avTransport.Next([
             ('InstanceID', 0),
             ('Speed', 1)
         ])
-        performance_logger.info("soco:next:Next has been called")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:next:%s" % json.dumps(log_args))
 
     @only_on_master
     def previous(self):
@@ -574,12 +585,13 @@ class SoCo(_SocoSingletonBase):
         go back on tracks.
 
         """
-        performance_logger.info("soco:previous:Calling previous")
+        start_timestamp = time.time()
         self.avTransport.Previous([
             ('InstanceID', 0),
             ('Speed', 1)
         ])
-        performance_logger.info("soco:previous:Previous has been called")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:previous:%s" % json.dumps(log_args))
 
     @property
     def mute(self):
@@ -605,28 +617,29 @@ class SoCo(_SocoSingletonBase):
     @property
     def volume(self):
         """ The speaker's volume. An integer between 0 and 100. """
-
-        performance_logger.info("soco:volume:Getting volume")
+        start_timestamp = time.time()
         response = self.renderingControl.GetVolume([
             ('InstanceID', 0),
             ('Channel', 'Master'),
         ])
-        performance_logger.info("soco:volume:Got volume: %s" % response)
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:volume:%s" % json.dumps(log_args))
         volume = response['CurrentVolume']
         return int(volume)
 
     @volume.setter
     def volume(self, volume):
         """ Set the speaker's volume """
+        start_timestamp = time.time()
         volume = int(volume)
         volume = max(0, min(volume, 100))  # Coerce in range
-        performance_logger.info("soco:volume.setter:Setting volume to: %s" % volume)
         self.renderingControl.SetVolume([
             ('InstanceID', 0),
             ('Channel', 'Master'),
             ('DesiredVolume', volume)
         ])
-        performance_logger.info("soco:volume.setter:Volume set")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000, volume=volume)
+        performance_logger.info("soco:volume.setter:%s" % json.dumps(log_args))
 
     @property
     def bass(self):
@@ -1030,12 +1043,11 @@ class SoCo(_SocoSingletonBase):
         string.
 
         """
-        performance_logger.info("soco:get_current_track_info:Calling get position info")
+        start_timestamp = time.time()
         response = self.avTransport.GetPositionInfo([
             ('InstanceID', 0),
             ('Channel', 'Master')
         ])
-        performance_logger.info("soco:get_current_track_info:Got position info")
 
         track = {'title': '', 'artist': '', 'album': '', 'album_art': '',
                  'position': ''}
@@ -1095,7 +1107,8 @@ class SoCo(_SocoSingletonBase):
             if album_art_url is not None:
                 track['album_art'] = self._build_album_art_full_uri(
                     album_art_url)
-
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:get_current_track_info:%s" % json.dumps(log_args))
         return track
 
     def get_speaker_info(self, refresh=False):
@@ -1144,11 +1157,10 @@ class SoCo(_SocoSingletonBase):
         states of CurrentTransportStatus and CurrentSpeed.
 
         """
-        performance_logger.info("soco:get_current_transport_info:Getting transport info")
+        start_timestamp = time.time()
         response = self.avTransport.GetTransportInfo([
             ('InstanceID', 0),
         ])
-        performance_logger.info("soco:get_current_transport_info:Got transport info: %s" % response)
 
         playstate = {
             'current_transport_status': '',
@@ -1162,6 +1174,8 @@ class SoCo(_SocoSingletonBase):
             response['CurrentTransportStatus']
         playstate['current_transport_speed'] = response['CurrentSpeed']
 
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:get_current_transport_info:%s" % json.dumps(log_args))
         return playstate
 
     def get_queue(self, start=0, max_items=100, full_album_art_uri=False):
@@ -1178,7 +1192,7 @@ class SoCo(_SocoSingletonBase):
 
         """
         queue = []
-        performance_logger.info("soco:get_queue:Browsing content directory for queue")
+        start_timestamp = time.time()
         response = self.contentDirectory.Browse([
             ('ObjectID', 'Q:0'),
             ('BrowseFlag', 'BrowseDirectChildren'),
@@ -1187,7 +1201,6 @@ class SoCo(_SocoSingletonBase):
             ('RequestedCount', max_items),
             ('SortCriteria', '')
         ])
-        performance_logger.info("soco:get_queue:Browsing returned the queue: %s" % response)
         result = response['Result']
 
         metadata = {}
@@ -1207,6 +1220,8 @@ class SoCo(_SocoSingletonBase):
                 self._update_album_art_to_full_uri(item)
             queue.append(item)
 
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:get_queue:%s" % json.dumps(log_args))
         # pylint: disable=star-args
         return Queue(queue, **metadata)
 
@@ -1578,7 +1593,7 @@ class SoCo(_SocoSingletonBase):
                 and metadata is a dict with the 'number_returned',
                 'total_matches' and 'update_id' integers
         """
-        performance_logger.info("soco:_music_lib_search:Browsing the music library for: %s" % search)
+        start_timestamp = time.time()
         response = self.contentDirectory.Browse([
             ('ObjectID', search),
             ('BrowseFlag', 'BrowseDirectChildren'),
@@ -1587,12 +1602,15 @@ class SoCo(_SocoSingletonBase):
             ('RequestedCount', max_items),
             ('SortCriteria', '')
         ])
-        performance_logger.info("soco:_music_lib_search:Search return result: %s" % response)
 
         # Get result information
         metadata = {}
         for tag in ['NumberReturned', 'TotalMatches', 'UpdateID']:
             metadata[camel_to_underscore(tag)] = int(response[tag])
+
+        log_args = dict(duration=(time.time() - start_timestamp)*1000, search=search)
+        performance_logger.info("soco:_music_lib_search:%s" % json.dumps(log_args))
+
         return response, metadata
 
     @only_on_master
@@ -1611,8 +1629,8 @@ class SoCo(_SocoSingletonBase):
     @only_on_master
     def add_to_queue(self, queueable_item, metadata=None):
         """ Adds a queueable item to the queue """
+        start_timestamp = time.time()
         metadata = to_didl_string(queueable_item) if not metadata else metadata;
-        performance_logger.info("soco:add_to_queue:Calling add uri to queue")
         response = self.avTransport.AddURIToQueue([
             ('InstanceID', 0),
             ('EnqueuedURI', queueable_item.resources[0].uri),
@@ -1620,7 +1638,8 @@ class SoCo(_SocoSingletonBase):
             ('DesiredFirstTrackNumberEnqueued', 0),
             ('EnqueueAsNext', 1)
         ])
-        performance_logger.info("soco:add_to_queue:Uri added to queue")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000, uri=queueable_item.resources[0].uri)
+        performance_logger.info("soco:add_to_queue:%s" % json.dumps(log_args))
         qnumber = response['FirstTrackNumberEnqueued']
         return int(qnumber)
 
@@ -1656,11 +1675,12 @@ class SoCo(_SocoSingletonBase):
         Raises SoCoException (or a subclass) upon errors.
 
         """
-        performance_logger.info("soco:clear_queue:Calling remove all tracks from queue")
+        start_timestamp = time.time()
         self.avTransport.RemoveAllTracksFromQueue([
             ('InstanceID', 0),
         ])
-        performance_logger.info("soco:clear_queue:All tracks from queue removed")
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:clear_queue:%s" % json.dumps(log_args))
 
     def get_favorite_radio_shows(self, start=0, max_items=100):
         """ Get favorite radio shows from Sonos' Radio app.
@@ -1717,10 +1737,10 @@ class SoCo(_SocoSingletonBase):
         max_items -- The total number of results to return.
 
         """
+        start_timestamp = time.time()
         if favorite_type != RADIO_SHOWS and favorite_type != RADIO_STATIONS:
             favorite_type = SONOS_FAVORITES
 
-        performance_logger.info("soco:__get_favorites:Browsing the content directory for favorites")
         response = self.contentDirectory.Browse([
             ('ObjectID', 'FV:2' if favorite_type is SONOS_FAVORITES
                                     else 'R:0/{0}'.format(favorite_type)),
@@ -1730,7 +1750,7 @@ class SoCo(_SocoSingletonBase):
             ('RequestedCount', max_items),
             ('SortCriteria', '')
         ])
-        performance_logger.info("soco:__get_favorites:Got favorites from the content directory %s" % response)
+
         result = {}
         favorites = []
         results_xml = response['Result']
@@ -1763,6 +1783,8 @@ class SoCo(_SocoSingletonBase):
         result['returned'] = len(favorites)
         result['favorites'] = favorites
 
+        log_args = dict(duration=(time.time()-start_timestamp)*1000)
+        performance_logger.info("soco:__get_favorites:%s" % json.dumps(log_args))
         return result
 
     def _update_album_art_to_full_uri(self, item):

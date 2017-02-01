@@ -41,6 +41,7 @@ from __future__ import unicode_literals, absolute_import
 
 from collections import namedtuple
 from xml.sax.saxutils import escape
+import json
 import logging
 
 import requests
@@ -329,7 +330,6 @@ class Service(object):
         headers, body = self.build_command(action, args)
         log.info("Sending %s %s to %s", action, args, self.soco.ip_address)
         log.debug("Sending %s, %s", headers, prettify(body))
-        performance_logger.info("soco:send_command:Sending request to sonos %s %s" % (action, args))
         # Convert the body to bytes, and send it.
         response = requests.post(
             self.base_url + self.control_url,
@@ -337,7 +337,8 @@ class Service(object):
             data=body.encode('utf-8')
         )
         log.debug("Received %s, %s", response.headers, response.text)
-        performance_logger.info("soco:send_command:Got response from sonos %s %s" % (action, args))
+        log_args = dict(action=action,args=args,duration=response.elapsed.total_seconds()*1000)
+        performance_logger.info("soco:send_command:%s" % json.dumps(log_args))
         status = response.status_code
         log.info(
             "Received status %s from %s", status, self.soco.ip_address)
