@@ -200,7 +200,7 @@ class SoCo(_SocoSingletonBase):
                           'categories': 'A:'}
 
     # pylint: disable=super-on-old-class
-    def __init__(self, ip_address):
+    def __init__(self, ip_address, request_timeout=None):
         # Note: Creation of a SoCo instance should be as cheap and quick as
         # possible. Do not make any network calls here
         super(SoCo, self).__init__()
@@ -212,6 +212,7 @@ class SoCo(_SocoSingletonBase):
             raise ValueError("Not a valid IP address string")
         #: The speaker's ip address
         self.ip_address = ip_address
+        self.request_timeout = request_timeout
         self.speaker_info = {}  # Stores information about the current speaker
 
         # The services which we use
@@ -614,7 +615,6 @@ class SoCo(_SocoSingletonBase):
             ('DesiredMute', mute_value)
         ])
 
-    @property
     def volume(self):
         """ The speaker's volume. An integer between 0 and 100. """
         start_timestamp = time.time()
@@ -627,8 +627,7 @@ class SoCo(_SocoSingletonBase):
         volume = response['CurrentVolume']
         return int(volume)
 
-    @volume.setter
-    def volume(self, volume):
+    def set_volume(self, volume):
         """ Set the speaker's volume """
         start_timestamp = time.time()
         volume = int(volume)
@@ -639,7 +638,7 @@ class SoCo(_SocoSingletonBase):
             ('DesiredVolume', volume)
         ])
         log_args = dict(duration=(time.time()-start_timestamp)*1000, volume=volume)
-        performance_logger.info("soco:volume.setter:%s" % json.dumps(log_args))
+        performance_logger.info("soco:set_volume:%s" % json.dumps(log_args))
 
     @property
     def bass(self):
@@ -1126,7 +1125,7 @@ class SoCo(_SocoSingletonBase):
             return self.speaker_info
         else:
             response = requests.get('http://' + self.ip_address +
-                                    ':1400/status/zp')
+                                    ':1400/status/zp', timeout=self.request_timeout)
             dom = XML.fromstring(response.content)
 
         if dom.findtext('.//ZoneName') is not None:

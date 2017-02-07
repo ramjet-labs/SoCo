@@ -334,7 +334,8 @@ class Service(object):
         response = requests.post(
             self.base_url + self.control_url,
             headers=headers,
-            data=body.encode('utf-8')
+            data=body.encode('utf-8'),
+            timeout=self.soco.request_timeout,
         )
         log.debug("Received %s, %s", response.headers, response.text)
         log_args = dict(action=action,args=args,duration=response.elapsed.total_seconds()*1000)
