@@ -48,7 +48,7 @@ import requests
 from .cache import Cache
 from .exceptions import SoCoUPnPException, UnknownSoCoException
 from .utils import prettify
-from .events import Subscription
+from .events import SonosSubscription
 from .xml import XML
 
 log = logging.getLogger(__name__)  # pylint: disable=C0103
@@ -425,8 +425,8 @@ class Service(object):
             log.error("Unknown error received from %s", self.soco.ip_address)
             raise UnknownSoCoException(xml_error)
 
-    def subscribe(
-            self, requested_timeout=None, auto_renew=False, event_queue=None):
+    async def subscribe(self, loop, event_server, callback_func, requested_timeout=None,
+                        auto_renew=False):
         """Subscribe to the service's events.
 
         If requested_timeout is provided, a subscription valid for that number
@@ -443,30 +443,15 @@ class Service(object):
         To unsubscribe, call the `unsubscribe` method on the returned object.
 
         """
-        subscription = Subscription(
-            self, event_queue)
-        subscription.subscribe(
-            requested_timeout=requested_timeout, auto_renew=auto_renew)
+        subscription = SonosSubscription(
+            loop=loop,
+            event_server=event_server,
+            subscribe_uri=self.base_url + self.event_subscription_url,
+            callback_func=callback_func,
+            requested_timeout=requested_timeout,
+        )
+        await subscription.subscribe(auto_renew=auto_renew)
         return subscription
-
-    def _update_cache_on_event(self, event):
-        """ Update the cache when an event is received.
-
-        This will be called before an event is put onto the event queue. Events
-        will often indicate that the Sonos device's state has changed, so this
-        opportunity is made availabe for the service to update its cache. The
-        event will be put onto the event queue once this method returns.
-
-        `event` is an Event namedtuple: ('sid', 'seq', 'service', 'variables')
-
-        ..  warning:: This method will not be called from the main thread but
-            by one or more threads, which handle the events as they come in.
-            You *must not* access any class, instance or global variables
-            without appropriate locks. Treat all parameters passed to this
-            method as read only.
-
-        """
-        pass
 
     def iter_actions(self):
         """ Yield the service's actions with their in_arguments (ie parameters

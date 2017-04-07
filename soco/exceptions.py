@@ -64,3 +64,8 @@ class UnknownXMLStructure(SoCoException):
 
 class SoCoSlaveException(SoCoException):
     """Raised when a master command is called on a slave"""
+
+
+class SoCoPreconditionException(SoCoException):
+    """Raised when a precondition for a request is not met"""
+
