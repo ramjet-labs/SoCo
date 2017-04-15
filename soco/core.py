@@ -157,9 +157,6 @@ class SoCo(_SocoSingletonBase):
         get_albums_for_artist -- Get albums for an artist.
         get_tracks_for_album -- Get tracks for an artist's album.
         start_library_update -- Trigger an update of the music library.
-
-    Properties::
-
         uid -- The speaker's unique identifier
         mute -- The speaker's mute status.
         volume -- The speaker's volume.
@@ -176,13 +173,6 @@ class SoCo(_SocoSingletonBase):
         is_playing_tv -- Is the playbar speaker input from TV?
         is_playing_radio -- Is the speaker input from radio?
         is_playing_line_in -- Is the speaker input from line-in?
-
-    .. warning::
-
-        These properties are not cached and will obtain information over the
-        network, so may take longer than expected to set or return a value. It
-        may be a good idea for you to cache the value in your own code.
-
     """
 
     _class_group = 'SoCo'
@@ -243,7 +233,6 @@ class SoCo(_SocoSingletonBase):
     def __repr__(self):
         return '{0}("{1}")'.format(self.__class__.__name__, self.ip_address)
 
-    @property
     def player_name(self):
         """  The speaker's name. A string. """
         # We could get the name like this:
@@ -254,8 +243,7 @@ class SoCo(_SocoSingletonBase):
         self._parse_zone_group_state()
         return self._player_name
 
-    @player_name.setter
-    def player_name(self, playername):
+    def set_player_name(self, playername):
         """ Set the speaker's name """
         self.deviceProperties.SetZoneAttributes([
             ('DesiredZoneName', playername),
@@ -263,7 +251,6 @@ class SoCo(_SocoSingletonBase):
             ('DesiredConfiguration', '')
         ])
 
-    @property
     def uid(self):
         """ A unique identifier.  Looks like: RINCON_000XXXXXXXXXX1400 """
         # Since this does not change over time (?) check whether we already
@@ -287,7 +274,6 @@ class SoCo(_SocoSingletonBase):
         # self._uid = uid = udn[5:]
         # return uid
 
-    @property
     def is_visible(self):
         """ Is this zone visible? A zone might be invisible if, for example it
         is a bridge, or the slave part of stereo pair.
@@ -301,7 +287,6 @@ class SoCo(_SocoSingletonBase):
         # zone group topology, to capitalise on any caching.
         return self in self.visible_zones
 
-    @property
     def is_bridge(self):
         """ Is this zone a bridge? """
         # Since this does not change over time (?) check whether we already
@@ -314,7 +299,6 @@ class SoCo(_SocoSingletonBase):
         self._parse_zone_group_state()
         return self._is_bridge
 
-    @property
     def is_coordinator(self):
         """ Return True if this zone is a group coordinator, otherwise False.
 
@@ -328,7 +312,6 @@ class SoCo(_SocoSingletonBase):
         self._parse_zone_group_state()
         return self._is_coordinator
 
-    @property
     def play_mode(self):
         """ The queue's play mode. Case-insensitive options are:
 
@@ -343,8 +326,7 @@ class SoCo(_SocoSingletonBase):
         ])
         return result['PlayMode']
 
-    @play_mode.setter
-    def play_mode(self, playmode):
+    def set_play_mode(self, playmode):
         """ Set the speaker's mode """
         playmode = playmode.upper()
         if playmode not in PLAY_MODES:
@@ -355,7 +337,6 @@ class SoCo(_SocoSingletonBase):
             ('NewPlayMode', playmode)
         ])
 
-    @property
     @only_on_master  # Only for symmetry with the setter
     def cross_fade(self):
         """ The speaker's cross fade state.
@@ -367,9 +348,8 @@ class SoCo(_SocoSingletonBase):
         cross_fade_state = response['CrossfadeMode']
         return True if int(cross_fade_state) else False
 
-    @cross_fade.setter
     @only_on_master
-    def cross_fade(self, crossfade):
+    def set_cross_fade(self, crossfade):
         """ Set the speaker's cross fade state. """
         crossfade_value = '1' if crossfade else '0'
         self.avTransport.SetCrossfadeMode([
@@ -421,7 +401,7 @@ class SoCo(_SocoSingletonBase):
 
         log_args = dict(action="All", duration=(time.time()-start_timestamp)*1000, track=index+1, uri=uri)
         performance_logger.info("soco:play_from_queue:%s" % json.dumps(log_args))
-        
+
         # finally, just play what's set if needed
         if start:
             return self.play()
@@ -594,7 +574,6 @@ class SoCo(_SocoSingletonBase):
         log_args = dict(duration=(time.time()-start_timestamp)*1000)
         performance_logger.info("soco:previous:%s" % json.dumps(log_args))
 
-    @property
     def mute(self):
         """ The speaker's mute state. True if muted, False otherwise """
 
@@ -605,8 +584,7 @@ class SoCo(_SocoSingletonBase):
         mute_state = response['CurrentMute']
         return True if int(mute_state) else False
 
-    @mute.setter
-    def mute(self, mute):
+    def set_mute(self, mute):
         """ Mute (or unmute) the speaker """
         mute_value = '1' if mute else '0'
         self.renderingControl.SetMute([
@@ -640,7 +618,6 @@ class SoCo(_SocoSingletonBase):
         log_args = dict(duration=(time.time()-start_timestamp)*1000, volume=volume)
         performance_logger.info("soco:set_volume:%s" % json.dumps(log_args))
 
-    @property
     def bass(self):
         """ The speaker's bass EQ. An integer between -10 and 10. """
 
@@ -651,8 +628,7 @@ class SoCo(_SocoSingletonBase):
         bass = response['CurrentBass']
         return int(bass)
 
-    @bass.setter
-    def bass(self, bass):
+    def set_bass(self, bass):
         """ Set the speaker's bass """
         bass = int(bass)
         bass = max(-10, min(bass, 10))  # Coerce in range
@@ -661,7 +637,6 @@ class SoCo(_SocoSingletonBase):
             ('DesiredBass', bass)
         ])
 
-    @property
     def treble(self):
         """ The speaker's treble EQ. An integer between -10 and 10. """
 
@@ -672,8 +647,7 @@ class SoCo(_SocoSingletonBase):
         treble = response['CurrentTreble']
         return int(treble)
 
-    @treble.setter
-    def treble(self, treble):
+    def set_treble(self, treble):
         """ Set the speaker's treble """
         treble = int(treble)
         treble = max(-10, min(treble, 10))  # Coerce in range
@@ -682,7 +656,6 @@ class SoCo(_SocoSingletonBase):
             ('DesiredTreble', treble)
         ])
 
-    @property
     def loudness(self):
         """ The Sonos speaker's loudness compensation. True if on, otherwise
         False.
@@ -698,8 +671,7 @@ class SoCo(_SocoSingletonBase):
         loudness = response["CurrentLoudness"]
         return True if int(loudness) else False
 
-    @loudness.setter
-    def loudness(self, loudness):
+    def set_loudness(self, loudness):
         """ Switch on/off the speaker's loudness compensation """
         loudness_value = '1' if loudness else '0'
         self.renderingControl.SetLoudness([
@@ -830,13 +802,11 @@ class SoCo(_SocoSingletonBase):
                 # of groups
             self._groups.add(ZoneGroup(group_uid, group_coordinator, members))
 
-    @property
     def all_groups(self):
         """  Return a set of all the available groups"""
         self._parse_zone_group_state()
         return self._groups
 
-    @property
     def group(self):
         """The Zone Group of which this device is a member.
 
@@ -858,13 +828,11 @@ class SoCo(_SocoSingletonBase):
         # else:
         #     return None
 
-    @property
     def all_zones(self):
         """ Return a set of all the available zones"""
         self._parse_zone_group_state()
         return self._all_zones
 
-    @property
     def visible_zones(self):
         """ Return an set of all visible zones"""
         self._parse_zone_group_state()
@@ -938,7 +906,6 @@ class SoCo(_SocoSingletonBase):
             ('CurrentURIMetaData', '')
         ])
 
-    @property
     def is_playing_radio(self):
         """ Is the speaker playing radio?
 
@@ -951,7 +918,6 @@ class SoCo(_SocoSingletonBase):
         track_uri = response['TrackURI']
         return re.match(r'^x-rincon-mp3radio:', track_uri) is not None
 
-    @property
     def is_playing_line_in(self):
         """ Is the speaker playing line-in?
 
@@ -964,7 +930,6 @@ class SoCo(_SocoSingletonBase):
         track_uri = response['TrackURI']
         return re.match(r'^x-rincon-stream:', track_uri) is not None
 
-    @property
     def is_playing_tv(self):
         """ Is the playbar speaker input from TV?
 
@@ -997,7 +962,6 @@ class SoCo(_SocoSingletonBase):
             ('CurrentURIMetaData', '')
         ])
 
-    @property
     def status_light(self):
         """ The white Sonos status light between the mute button and the volume
         up button on the speaker. True if on, otherwise False.
@@ -1007,8 +971,7 @@ class SoCo(_SocoSingletonBase):
         LEDState = result["CurrentLEDState"]  # pylint: disable=invalid-name
         return True if LEDState == "On" else False
 
-    @status_light.setter
-    def status_light(self, led_on):
+    def set_status_light(self, led_on):
         """ Switch on/off the speaker's status light """
         led_state = 'On' if led_on else 'Off'
         self.deviceProperties.SetLEDState([
@@ -1224,7 +1187,6 @@ class SoCo(_SocoSingletonBase):
         # pylint: disable=star-args
         return Queue(queue, **metadata)
 
-    @property
     def queue_size(self):
         """ Get size of queue """
         response = self.contentDirectory.Browse([
@@ -1963,7 +1925,6 @@ class SoCo(_SocoSingletonBase):
         result._metadata['search_type'] = 'tracks_for_album'
         return result
 
-    @property
     def library_updating(self):
         """True if the music library is in the process of being updated
 
@@ -1983,7 +1944,6 @@ class SoCo(_SocoSingletonBase):
             ('AlbumArtistDisplayOption', album_artist_display_option),
         ])
 
-    @property
     def album_artist_display_option(self):
         """Return the current value of the album artist compilation
         setting (see

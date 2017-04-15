@@ -83,13 +83,11 @@ class ZoneGroup(object):
         return "{0}(uid='{1}', coordinator={2!r}, members={3!r})".format(
             self.__class__.__name__, self.uid, self.coordinator, self.members)
 
-    @property
     def label(self):
         """ A description of the group """
         group_names = sorted([m.player_name for m in self.members])
         return ", ".join(group_names)
 
-    @property
     def short_label(self):
         """ A short description of the group """
         group_names = sorted([m.player_name for m in self.members])
