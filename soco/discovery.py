@@ -135,6 +135,6 @@ def discover(timeout=1, include_invisible=False, interface_addr=None):
             # ourselves.
             zone = config.SOCO_CLASS(addr[0])
             if include_invisible:
-                return zone.all_zones
+                return zone.all_zones()
             else:
-                return zone.visible_zones
+                return zone.visible_zones()

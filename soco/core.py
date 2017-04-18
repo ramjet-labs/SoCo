@@ -25,6 +25,7 @@ from .data_structures import DidlPlaylistContainer,\
 from .utils import really_utf8, camel_to_underscore, really_unicode,\
     url_escape_path
 from .xml import XML
+from . import parser
 from soco import config
 
 _LOG = logging.getLogger(__name__)
@@ -681,126 +682,24 @@ class SoCo(_SocoSingletonBase):
         ])
 
     def _parse_zone_group_state(self):
-        """ The Zone Group State contains a lot of useful information. Retrieve
-        and parse it, and populate the relevant properties. """
-
-# zoneGroupTopology.GetZoneGroupState()['ZoneGroupState'] returns XML like
-# this:
-#
-# <ZoneGroups>
-#   <ZoneGroup Coordinator="RINCON_000XXX1400" ID="RINCON_000XXXX1400:0">
-#     <ZoneGroupMember
-#         BootSeq="33"
-#         Configuration="1"
-#         Icon="x-rincon-roomicon:zoneextender"
-#         Invisible="1"
-#         IsZoneBridge="1"
-#         Location="http://192.168.1.100:1400/xml/device_description.xml"
-#         MinCompatibleVersion="22.0-00000"
-#         SoftwareVersion="24.1-74200"
-#         UUID="RINCON_000ZZZ1400"
-#         ZoneName="BRIDGE"/>
-#   </ZoneGroup>
-#   <ZoneGroup Coordinator="RINCON_000XXX1400" ID="RINCON_000XXX1400:46">
-#     <ZoneGroupMember
-#         BootSeq="44"
-#         Configuration="1"
-#         Icon="x-rincon-roomicon:living"
-#         Location="http://192.168.1.101:1400/xml/device_description.xml"
-#         MinCompatibleVersion="22.0-00000"
-#         SoftwareVersion="24.1-74200"
-#         UUID="RINCON_000XXX1400"
-#         ZoneName="Living Room"/>
-#     <ZoneGroupMember
-#         BootSeq="52"
-#         Configuration="1"
-#         Icon="x-rincon-roomicon:kitchen"
-#         Location="http://192.168.1.102:1400/xml/device_description.xml"
-#         MinCompatibleVersion="22.0-00000"
-#         SoftwareVersion="24.1-74200"
-#         UUID="RINCON_000YYY1400"
-#         ZoneName="Kitchen"/>
-#   </ZoneGroup>
-# </ZoneGroups>
-#
-
-        def parse_zone_group_member(member_element):
-            """ Parse a ZoneGroupMember or Satellite element from Zone Group
-            State, create a SoCo instance for the member, set basic attributes
-            and return it. """
-            # Create a SoCo instance for each member. Because SoCo
-            # instances are singletons, this is cheap if they have already
-            # been created, and useful if they haven't. We can then
-            # update various properties for that instance.
-            member_attribs = member_element.attrib
-            ip_addr = member_attribs['Location'].\
-                split('//')[1].split(':')[0]
-            zone = config.SOCO_CLASS(ip_addr)
-            # uid doesn't change, but it's not harmful to (re)set it, in case
-            # the zone is as yet unseen.
-            zone._uid = member_attribs['UUID']
-            zone._player_name = member_attribs['ZoneName']
-            # add the zone to the set of all members, and to the set
-            # of visible members if appropriate
-            is_visible = False if member_attribs.get(
-                'Invisible') == '1' else True
-            if is_visible:
-                self._visible_zones.add(zone)
-            self._all_zones.add(zone)
-            return zone
-
         # This is called quite frequently, so it is worth optimising it.
         # Maintain a private cache. If the zgt has not changed, there is no
         # need to repeat all the XML parsing. In addition, switch on network
         # caching for a short interval (5 secs).
-        zgs = self.zoneGroupTopology.GetZoneGroupState(
-            cache_timeout=5)['ZoneGroupState']
+        zgs = self.zoneGroupTopology.GetZoneGroupState(cache_timeout=5)['ZoneGroupState']
         if zgs == self._zgs_cache:
             return
         self._zgs_cache = zgs
         tree = XML.fromstring(zgs.encode('utf-8'))
-        # Empty the set of all zone_groups
-        self._groups.clear()
-        # and the set of all members
+        self._groups = parser.parse_zone_group_state(xml_group_state=tree)
+
         self._all_zones.clear()
         self._visible_zones.clear()
-        # Loop over each ZoneGroup Element
-        for group_element in tree.findall('ZoneGroup'):
-            coordinator_uid = group_element.attrib['Coordinator']
-            group_uid = group_element.attrib['ID']
-            group_coordinator = None
-            members = set()
-            for member_element in group_element.findall('ZoneGroupMember'):
-                zone = parse_zone_group_member(member_element)
-                # Perform extra processing relevant to direct zone group
-                # members
-                #
-                # If this element has the same UUID as the coordinator, it is
-                # the coordinator
-                if zone._uid == coordinator_uid:
-                    group_coordinator = zone
-                    zone._is_coordinator = True
-                else:
-                    zone._is_coordinator = False
-                # is_bridge doesn't change, but it does no real harm to
-                # set/reset it here, just in case the zone has not been seen
-                # before
-                zone._is_bridge = True if member_element.attrib.get(
-                    'IsZoneBridge') == '1' else False
-                # add the zone to the members for this group
-                members.add(zone)
-                # Loop over Satellite elements if present, and process as for
-                # ZoneGroup elements
-                for satellite_element in member_element.findall('Satellite'):
-                    zone = parse_zone_group_member(satellite_element)
-                    # Assume a satellite can't be a bridge or coordinator, so
-                    # no need to check.
-                    #
-                    # Add the zone to the members for this group.
-                    members.add(zone)
-                # Now create a ZoneGroup with this info and add it to the list
-                # of groups
-            self._groups.add(ZoneGroup(group_uid, group_coordinator, members))
+        for zone_group in self._groups:
+            for group_member in zone_group.members:
+                self._all_zones.add(group_member)
+                if group_member.is_visible:
+                    self._visible_zones.add(group_member)
 
     def all_groups(self):
         """  Return a set of all the available groups"""
@@ -812,7 +711,7 @@ class SoCo(_SocoSingletonBase):
 
         group will be None if this zone is a slave in a stereo pair."""
 
-        for group in self.all_groups:
+        for group in self.all_groups():
             if self in group:
                 return group
         return None
