@@ -380,7 +380,7 @@ class SoCo(_SocoSingletonBase):
             self.get_speaker_info()
 
         # first, set the queue itself as the source URI
-        uri = 'x-rincon-queue:{0}#0'.format(self.uid)
+        uri = 'x-rincon-queue:{0}#0'.format(self.uid())
         start_timestamp = time.time()
         self.avTransport.SetAVTransportURI([
             ('InstanceID', 0),
@@ -801,7 +801,7 @@ class SoCo(_SocoSingletonBase):
 
         self.avTransport.SetAVTransportURI([
             ('InstanceID', 0),
-            ('CurrentURI', 'x-rincon-stream:{0}'.format(self.uid)),
+            ('CurrentURI', 'x-rincon-stream:{0}'.format(self.uid())),
             ('CurrentURIMetaData', '')
         ])
 
@@ -857,7 +857,7 @@ class SoCo(_SocoSingletonBase):
 
         self.avTransport.SetAVTransportURI([
             ('InstanceID', 0),
-            ('CurrentURI', 'x-sonos-htastream:{0}:spdif'.format(self.uid)),
+            ('CurrentURI', 'x-sonos-htastream:{0}:spdif'.format(self.uid())),
             ('CurrentURIMetaData', '')
         ])
 
@@ -994,7 +994,7 @@ class SoCo(_SocoSingletonBase):
             self.speaker_info['zone_name'] = \
                 dom.findtext('.//ZoneName')
             self.speaker_info['zone_icon'] = dom.findtext('.//ZoneIcon')
-            self.speaker_info['uid'] = self.uid
+            self.speaker_info['uid'] = self.uid()
             self.speaker_info['serial_number'] = \
                 dom.findtext('.//SerialNumber')
             self.speaker_info['software_version'] = \
