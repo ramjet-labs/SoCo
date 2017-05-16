@@ -10,7 +10,6 @@ from . import parser
 from . import exceptions
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 class SonosEvent:
 
