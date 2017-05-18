@@ -1,3 +1,4 @@
+import aiohttp
 import aiohttp.web
 import asyncio
 import enum
@@ -20,14 +21,20 @@ class SonosEventServer:
 
   def __init__(self, loop, listen_host, listen_port):
     self.loop = loop
-    self._app = aiohttp.web.Application(loop=loop)
+    if aiohttp.__version__ > "0.21.6":
+      self._app = aiohttp.web.Application()
+    else:
+      self._app = aiohttp.web.Application(loop=loop)
     self._app.router.add_route(
         name="notify_event",
         method="*",
         path="/",
         handler=self.handle_incoming_event,
     )
-    self._socket_server_protocol = self._app.make_handler()
+    if aiohttp.__version__ > "0.21.6":
+      self._socket_server_protocol = self._app.make_handler(loop=loop)
+    else:
+      self._socket_server_protocol = self._app.make_handler()
     self.listen_host = listen_host
     self.listen_port = listen_port
     self._socket_server = None
