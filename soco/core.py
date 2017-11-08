@@ -986,24 +986,32 @@ class SoCo(_SocoSingletonBase):
         if self.speaker_info and refresh is False:
             return self.speaker_info
         else:
-            response = requests.get('http://' + self.ip_address +
-                                    ':1400/status/zp', timeout=self.request_timeout)
+            response = requests.get(
+                'http://%s:1400/xml/device_description.xml' % (self.ip_address),
+                timeout=self.request_timeout
+            )
             dom = XML.fromstring(response.content)
 
-        if dom.findtext('.//ZoneName') is not None:
+        device = dom.find('{urn:schemas-upnp-org:device-1-0}device')
+        if device is not None:
             self.speaker_info['zone_name'] = \
-                dom.findtext('.//ZoneName')
-            self.speaker_info['zone_icon'] = dom.findtext('.//ZoneIcon')
-            self.speaker_info['uid'] = self.uid()
-            self.speaker_info['serial_number'] = \
-                dom.findtext('.//SerialNumber')
-            self.speaker_info['software_version'] = \
-                dom.findtext('.//SoftwareVersion')
-            self.speaker_info['hardware_version'] = \
-                dom.findtext('.//HardwareVersion')
-            self.speaker_info['mac_address'] = dom.findtext('.//MACAddress')
+                device.findtext('{urn:schemas-upnp-org:device-1-0}roomName')
+            self.speaker_info['serial_number'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}serialNum')
+            self.speaker_info['software_version'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}softwareVersion')
+            self.speaker_info['hardware_version'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}hardwareVersion')
+            self.speaker_info['model_number'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}modelNumber')
+            self.speaker_info['model_name'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}modelName')
+            self.speaker_info['display_version'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}displayVersion')
+            self.speaker_info['player_name'] = device.findtext(
+                '{urn:schemas-upnp-org:device-1-0}roomName')
 
-            return self.speaker_info
+        return self.speaker_info
 
     def get_current_transport_info(self):
         """ Get the current playback state
