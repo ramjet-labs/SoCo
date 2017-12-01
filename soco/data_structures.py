@@ -376,9 +376,7 @@ class DidlObject(DidlMetaClass(str('DidlMetaClass'), (object,), {})):
         parent_id = really_unicode(element.get('parentID', None))
         if parent_id is None:
             raise DIDLMetadataError("Missing parentID attribute")
-        restricted = element.get('restricted', None)
-        if restricted is None:
-            raise DIDLMetadataError("Missing restricted attribute")
+        restricted = element.get('restricted', False)
         restricted = True if restricted in [1, 'true', 'True'] else False
 
         # There must be a title. According to spec, it should be the first
